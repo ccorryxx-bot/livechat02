@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Dashboard - Live Chat Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0A0E1A;
+      --primary: #00D4FF;
+      --accent: #FFB800;
+      --surface: #111827;
+      --surface-light: #1F2937;
+      --text: #F1F5F9;
+      --text-muted: #94A3B8;
+      --glass: rgba(17, 24, 39, 0.8);
+      --danger: #EF4444;
+      --success: #22C55E;
+      --glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse at top left, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(255, 184, 0, 0.05) 0%, transparent 50%);
+    }
+
+    .login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 400px;
+      background: var(--glass);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: var(--glow);
+      padding: 2.5rem;
+    }
+
+    .login-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .login-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-size: 0.875rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9375rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--primary) 0%, #0099CC 100%);
+      border: none;
+      border-radius: 12px;
+      color: var(--bg);
+      font-family: 'Sora', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 212, 255, 0.4);
+    }
+
+    .login-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--danger);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      color: var(--danger);
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+
+    .dashboard {
+      display: none;
+      height: 100vh;
+    }
+
+    .dashboard-header {
+      height: 64px;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .agent-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .agent-avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary) 0%, #0099CC 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    .agent-name {
+      font-weight: 500;
+    }
+
+    .online-status {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+      color: var(--success);
+    }
+
+    .online-status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      background: var(--surface-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      color: var(--text);
+    }
+
+    .icon-btn:hover {
+      background: var(--surface);
+    }
+
+    .icon-btn.active {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .main-content {
+      display: flex;
+      height: calc(100vh - 64px);
+    }
+
+    .sessions-panel {
+      width: 320px;
+      background: var(--surface);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sessions-header {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sessions-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .sessions-search {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--surface-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.875rem;
+    }
+
+    .sessions-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .session-item {
+      padding: 0.875rem;
+      background: var(--surface-light);
+      border-radius: 12px;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease;
+      position: relative;
+    }
+
+    .session-item:hover {
+      background: rgba(31, 41, 55, 0.8);
+    }
+
+    .session-item.selected {
+      border-color: var(--primary);
+    }
+
+    .session-item.unread::after {
+      content: '';
+      position: absolute;
+      top: 0.875rem;
+      right: 0.875rem;
+      width: 10px;
+      height: 10px;
+      background: var(--danger);
+      border-radius: 50%;
+    }
+
+    .session-customer {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .session-meta {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 0.625rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge.ai {
+      background: rgba(0, 212, 255, 0.2);
+      color: var(--primary);
+    }
+
+    .badge.manual {
+      background: rgba(255, 184, 0, 0.2);
+      color: var(--accent);
+    }
+
+    .badge.deposit { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+    .badge.login { background: rgba(168, 85, 247, 0.2); color: #A855F7; }
+    .badge.game { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+    .badge.withdrawal { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+    .badge.other { background: rgba(156, 163, 175, 0.2); color: #9CA3AF; }
+
+    .session-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .chat-header {
+      padding: 1rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-customer-info h3 {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .chat-customer-info p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .chat-controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .mode-toggle {
+      display: flex;
+      background: var(--surface-light);
+      border-radius: 10px;
+      padding: 0.25rem;
+    }
+
+    .mode-btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Sora', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn.active {
+      background: var(--primary);
+      color: var(--bg);
+    }
+
+    .control-btn {
+      padding: 0.625rem 1.25rem;
+      background: var(--surface-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .control-btn:hover {
+      background: var(--surface);
+    }
+
+    .control-btn.close {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .control-btn.close:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .message {
+      max-width: 70%;
+      padding: 1rem;
+      border-radius: 16px;
+      position: relative;
+    }
+
+    .message.customer {
+      align-self: flex-end;
+      background: var(--primary);
+      color: var(--bg);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.agent {
+      align-self: flex-start;
+      background: var(--surface-light);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--primary);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-sender {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .message.customer .msg-sender {
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .msg-content {
+      font-size: 0.9375rem;
+      line-height: 1.5;
+    }
+
+    .msg-time {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      opacity: 0.7;
+    }
+
+    .message.customer .msg-time {
+      color: rgba(0, 0, 0, 0.4);
+    }
+
+    .typing-indicator {
+      align-self: flex-start;
+      padding: 1rem;
+      background: var(--surface-light);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .typing-indicator span {
+      width: 6px;
+      height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: typingPulse 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingPulse {
+      0%, 100% { transform: translateY(0); opacity: 0.4; }
+      50% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    .ai-handling {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid var(--primary);
+      border-radius: 10px;
+      color: var(--primary);
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    .quick-replies {
+      padding: 0.75rem 1.5rem;
+      background: var(--surface);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .quick-reply-btn {
+      padding: 0.5rem 1rem;
+      background: var(--surface-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.8125rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quick-reply-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .input-area {
+      padding: 1rem 1.5rem;
+      background: var(--surface);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .input-area textarea {
+      flex: 1;
+      padding: 0.875rem 1rem;
+      background: var(--surface-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9375rem;
+      resize: none;
+      max-height: 120px;
+    }
+
+    .input-area textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .send-btn {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary) 0%, #0099CC 100%);
+      border: none;
+      border-radius: 12px;
+      color: var(--bg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .send-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .stats-panel {
+      position: fixed;
+      top: 64px;
+      right: 0;
+      width: 360px;
+      background: var(--surface);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      height: calc(100vh - 64px);
+      padding: 1.5rem;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .stats-panel.open {
+      transform: translateX(0);
+    }
+
+    .stats-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface-light);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .stat-card h4 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-family: 'Sora', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .stat-bar {
+      display: flex;
+      height: 8px;
+      background: var(--surface);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+    }
+
+    .stat-bar-fill.ai { background: var(--primary); }
+    .stat-bar-fill.manual { background: var(--accent); }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .star-display {
+      color: var(--accent);
+      font-size: 1.25rem;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .sessions-list::-webkit-scrollbar,
+    .messages-area::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sessions-list::-webkit-scrollbar-track,
+    .messages-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sessions-list::-webkit-scrollbar-thumb,
+    .messages-area::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .btn-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-screen" id="loginScreen">
+    <div class="login-box">
+      <h1 class="login-title">Agent Login</h1>
+      <p class="login-subtitle">Sign in to access the support dashboard</p>
+      <div class="login-error" id="loginError"></div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="Enter your email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter your password">
+      </div>
+      <button class="login-btn" onclick="handleLogin()">Sign In</button>
+    </div>
+  </div>
+
+  <div class="dashboard" id="dashboard">
+    <header class="dashboard-header">
+      <div class="header-left">
+        <span class="logo">LiveChat</span>
+      </div>
+      <div class="agent-info">
+        <div class="agent-avatar" id="agentAvatar">A</div>
+        <div>
+          <div class="agent-name" id="agentName">Agent</div>
+          <div class="online-status">Online</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="statsBtn" onclick="toggleStats()" title="Analytics">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10M12 20V4M6 20v-6"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="handleLogout()" title="Logout">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <aside class="sessions-panel">
+        <div class="sessions-header">
+          <div class="sessions-title">ACTIVE SESSIONS</div>
+          <input type="text" class="sessions-search" placeholder="Search sessions..." id="sessionSearch" onkeyup="filterSessions()">
+        </div>
+        <div class="sessions-list" id="sessionsList"></div>
+      </aside>
+
+      <main class="chat-panel" id="chatPanel">
+        <div class="empty-state" id="emptyChat">
+          <div class="empty-state-icon">&#128172;</div>
+          <div>Select a session to start chatting</div>
+        </div>
+        <div class="hidden" id="activeChat">
+          <div class="chat-header">
+            <div class="chat-customer-info">
+              <h3 id="chatCustomerName">Customer Name</h3>
+              <p id="chatCustomerEmail">customer@email.com | <span id="chatDuration">00:00</span></p>
+            </div>
+            <div class="chat-controls">
+              <div class="mode-toggle">
+                <button class="mode-btn active" id="aiModeBtn" onclick="setMode('ai')">AI Mode</button>
+                <button class="mode-btn" id="manualModeBtn" onclick="setMode('manual')">Manual</button>
+              </div>
+              <button class="control-btn" onclick="assignToMe()">Assign to Me</button>
+              <button class="control-btn close" onclick="closeSession()">Close Session</button>
+            </div>
+          </div>
+          <div class="messages-area" id="messagesArea">
+            <div class="ai-handling hidden" id="aiHandling">
+              <span class="btn-spinner"></span> AI is handling this conversation...
+            </div>
+          </div>
+          <div class="quick-replies" id="quickReplies">
+            <button class="quick-reply-btn" data-msg="ကျေးဇူးတင်ပါသည်">ကျေးဇူးတင်ပါသည်</button>
+            <button class="quick-reply-btn" data-msg="ခဏစောင့်ပါ">ခဏစောင့်ပါ</button>
+            <button class="quick-reply-btn" data-msg="Screenshot ပို့ပေးပါ">Screenshot ပို့ပေးပါ</button>
+            <button class="quick-reply-btn" data-msg="ပြဿနာ ဖြေရှင်းပြီးပါပြီ">ပြဿနာ ဖြေရှင်းပြီးပါပြီ</button>
+            <button class="quick-reply-btn" data-msg="Admin ဆီ တင်ပေးပါမည်">Admin ဆီ တင်ပေးပါမည်</button>
+          </div>
+          <div class="input-area">
+            <textarea id="msgInput" placeholder="Type your message..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+            <button class="send-btn" onclick="sendAgentMessage()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="stats-panel" id="statsPanel">
+      <h2 class="stats-title">Today's Analytics</h2>
+      <div class="stat-card">
+        <h4>Total Sessions</h4>
+        <div class="stat-value" id="statTotalSessions">0</div>
+      </div>
+      <div class="stat-card">
+        <h4>AI vs Manual</h4>
+        <div class="stat-bar">
+          <div class="stat-bar-fill ai" id="statAiBar" style="width: 50%"></div>
+          <div class="stat-bar-fill manual" id="statManualBar" style="width: 50%"></div>
+        </div>
+        <div class="stat-row">
+          <span>AI: <strong id="statAiHandled">0</strong></span>
+          <span>Manual: <strong id="statManualHandled">0</strong></span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <h4>AI Escalations</h4>
+        <div class="stat-value" id="statEscalations">0</div>
+      </div>
+      <div class="stat-card">
+        <h4>Avg Wait Time</h4>
+        <div class="stat-value"><span id="statAvgWait">0</span>s</div>
+      </div>
+      <div class="stat-card">
+        <h4>Avg CSAT Rating</h4>
+        <div class="stat-value star-display" id="statCsat">-----</div>
+      </div>
+      <div class="stat-card">
+        <h4>Top Issue Category</h4>
+        <div class="stat-value" id="statTopCategory" style="font-size: 1.25rem">-</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://pgscdmbujgwxdqomrusw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnc2NkbWJ1amd3eGRxb21ydXN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3OTI0NDksImV4cCI6MjA5NTM2ODQ0OX0.v_AwSqtEXhUTfb_EnJyr3j4LH9fkOnt-Oyby7Nf1Ubw';
+    const AI_WORKER_URL = 'https://live-chat-ai-proxy.zekyyyy2006.workers.dev/';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true }
+    });
+
+    let currentUser = null;
+    let currentAgent = null;
+    let selectedSession = null;
+    let sessions = [];
+    let sessionChannel = null;
+    let messageChannel = null;
+    let durationInterval = null;
+    let statsInterval = null;
+    let unreadCount = 0;
+
+    async function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errorDiv = document.getElementById('loginError');
+
+      if (!email || !password) {
+        errorDiv.textContent = 'Please fill in all fields';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email, password
+        });
+
+        if (authError) throw authError;
+
+        currentUser = authData.user;
+
+        const { data: agent, error: agentError } = await supabase
+          .from('agents')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (!agent) {
+          const { data: newAgent, error: createError } = await supabase
+            .from('agents')
+            .insert({ id: currentUser.id, email: email, name: email.split('@')[0] })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          currentAgent = newAgent;
+        } else {
+          currentAgent = agent;
+        }
+
+        await supabase.from('agents').update({ is_online: true }).eq('id', currentAgent.id);
+
+        document.getElementById('agentName').textContent = currentAgent.name || 'Agent';
+        document.getElementById('agentAvatar').textContent = (currentAgent.name || 'A').charAt(0).toUpperCase();
+
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+
+        loadSessions();
+        setupRealtime();
+        loadStats();
+        statsInterval = setInterval(loadStats, 60000);
+        requestNotificationPermission();
+
+      } catch (err) {
+        errorDiv.textContent = err.message || 'Login failed';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    async function handleLogout() {
+      if (currentAgent) {
+        await supabase.from('agents').update({ is_online: false }).eq('id', currentAgent.id);
+      }
+      await supabase.auth.signOut();
+      window.location.reload();
+    }
+
+    async function loadSessions() {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false });
+
+      if (data) {
+        sessions = data;
+        renderSessions();
+      }
+    }
+
+    function renderSessions() {
+      const list = document.getElementById('sessionsList');
+      const search = document.getElementById('sessionSearch').value.toLowerCase();
+
+      const filtered = sessions.filter(s =>
+        s.customer_name.toLowerCase().includes(search) ||
+        s.issue_category.toLowerCase().includes(search)
+      );
+
+      list.innerHTML = filtered.map(s => `
+        <div class="session-item ${selectedSession?.id === s.id ? 'selected' : ''} ${s.has_unread ? 'unread' : ''}"
+             data-id="${s.id}" onclick="selectSession('${s.id}')">
+          <div class="session-customer">${escapeHtml(s.customer_name)}</div>
+          <div class="session-meta">
+            <span class="badge ${s.issue_category}">${s.issue_category}</span>
+            <span class="badge ${s.mode}">${s.mode.toUpperCase()}</span>
+            <span class="session-time">${formatTime(s.created_at)}</span>
+          </div>
+        </div>
+      `).join('');
+
+      updateUnreadCount();
+    }
+
+    function filterSessions() {
+      renderSessions();
+    }
+
+    async function selectSession(sessionId) {
+      const session = sessions.find(s => s.id === sessionId);
+      if (!session) return;
+
+      selectedSession = session;
+
+      document.getElementById('emptyChat').classList.add('hidden');
+      document.getElementById('activeChat').classList.remove('hidden');
+
+      document.getElementById('chatCustomerName').textContent = session.customer_name;
+      document.getElementById('chatCustomerEmail').textContent =
+        `${session.customer_email || 'No email'} | ${session.issue_category}`;
+
+      startDurationTimer(session.created_at);
+      updateModeButtons(session.mode);
+      renderSessionMessages();
+      markMessagesRead(sessionId);
+
+      renderSessions();
+    }
+
+    function startDurationTimer(createdAt) {
+      if (durationInterval) clearInterval(durationInterval);
+
+      const start = new Date(createdAt);
+      const update = () => {
+        const now = new Date();
+        const diff = Math.floor((now - start) / 1000);
+        const mins = Math.floor(diff / 60).toString().padStart(2, '0');
+        const secs = (diff % 60).toString().padStart(2, '0');
+        document.getElementById('chatDuration').textContent = `${mins}:${secs}`;
+      };
+
+      update();
+      durationInterval = setInterval(update, 1000);
+    }
+
+    function updateModeButtons(mode) {
+      document.getElementById('aiModeBtn').classList.toggle('active', mode === 'ai');
+      document.getElementById('manualModeBtn').classList.toggle('active', mode === 'manual');
+
+      document.getElementById('quickReplies').classList.toggle('hidden', mode === 'ai');
+      document.querySelector('.input-area').classList.toggle('hidden', mode === 'ai');
+      document.getElementById('aiHandling').classList.toggle('hidden', mode !== 'ai');
+    }
+
+    async function renderSessionMessages() {
+      if (!selectedSession) return;
+
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('session_id', selectedSession.id)
+        .order('created_at', { ascending: true });
+
+      if (messages) {
+        const area = document.getElementById('messagesArea');
+        const aiHandling = document.getElementById('aiHandling');
+
+        area.innerHTML = '';
+
+        if (selectedSession.mode === 'ai') {
+          area.appendChild(aiHandling);
+          aiHandling.classList.remove('hidden');
+        }
+
+        messages.forEach(msg => addMessageToArea(msg));
+        scrollToBottom();
+      }
+    }
+
+    function addMessageToArea(msg) {
+      const area = document.getElementById('messagesArea');
+      const div = document.createElement('div');
+      div.className = `message ${msg.sender_type}`;
+
+      const sender = msg.sender_type === 'customer' ? selectedSession?.customer_name :
+                    msg.sender_type === 'ai' ? 'AI Assistant' : 'You';
+
+      const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      div.innerHTML = `
+        <div class="msg-sender">${escapeHtml(sender)}</div>
+        <div class="msg-content">${escapeHtml(msg.content)}</div>
+        <div class="msg-time">${time}</div>
+      `;
+
+      area.appendChild(div);
+    }
+
+    async function sendAgentMessage() {
+      if (!selectedSession || selectedSession.mode !== 'manual') return;
+
+      const input = document.getElementById('msgInput');
+      const content = input.value.trim();
+
+      if (!content) return;
+
+      input.value = '';
+
+      const { data: msg, error } = await supabase.from('messages').insert({
+        session_id: selectedSession.id,
+        sender_type: 'agent',
+        sender_id: currentAgent.id,
+        content: content
+      }).select().single();
+
+      if (msg) {
+        await supabase.from('chat_sessions').update({
+          total_messages: (selectedSession.total_messages || 0) + 1
+        }).eq('id', selectedSession.id);
+
+        if (!selectedSession.first_response_at) {
+          await supabase.from('chat_sessions').update({
+            first_response_at: new Date().toISOString()
+          }).eq('id', selectedSession.id);
+
+          await supabase.from('session_events').insert({
+            session_id: selectedSession.id,
+            event_type: 'first_reply_sent'
+          });
+        }
+
+        addMessageToArea(msg);
+        scrollToBottom();
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendAgentMessage();
+      }
+    }
+
+    async function setMode(mode) {
+      if (!selectedSession || selectedSession.mode === mode) return;
+
+      const oldMode = selectedSession.mode;
+
+      await supabase.from('chat_sessions').update({ mode: mode }).eq('id', selectedSession.id);
+
+      await supabase.from('session_events').insert({
+        session_id: selectedSession.id,
+        event_type: mode === 'ai' ? 'mode_changed_to_ai' : 'mode_changed_to_manual'
+      });
+
+      if (oldMode === 'ai' && mode === 'manual') {
+        await supabase.from('chat_sessions').update({
+          escalated_from_ai: true
+        }).eq('id', selectedSession.id);
+
+        await supabase.from('session_events').insert({
+          session_id: selectedSession.id,
+          event_type: 'ai_escalated'
+        });
+      }
+
+      selectedSession.mode = mode;
+      updateModeButtons(mode);
+      loadSessions();
+    }
+
+    async function assignToMe() {
+      if (!selectedSession) return;
+
+      await supabase.from('chat_sessions').update({
+        assigned_agent_id: currentAgent.id
+      }).eq('id', selectedSession.id);
+
+      selectedSession.assigned_agent_id = currentAgent.id;
+      loadSessions();
+    }
+
+    async function closeSession() {
+      if (!selectedSession) return;
+
+      await supabase.from('chat_sessions').update({
+        status: 'closed',
+        resolved_at: new Date().toISOString()
+      }).eq('id', selectedSession.id);
+
+      await supabase.from('session_events').insert({
+        session_id: selectedSession.id,
+        event_type: 'session_closed'
+      });
+
+      sessions = sessions.filter(s => s.id !== selectedSession.id);
+      selectedSession = null;
+
+      document.getElementById('emptyChat').classList.remove('hidden');
+      document.getElementById('activeChat').classList.add('hidden');
+
+      if (durationInterval) clearInterval(durationInterval);
+      renderSessions();
+    }
+
+    async function markMessagesRead(sessionId) {
+      await supabase.from('messages')
+        .update({ is_read: true })
+        .eq('session_id', sessionId)
+        .eq('is_read', false);
+    }
+
+    function setupRealtime() {
+      sessionChannel = supabase.channel('sessions-channel')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'chat_sessions'
+        }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+            sessions.unshift(payload.new);
+            playNotificationSound();
+            showBrowserNotification('New chat session', `Customer: ${payload.new.customer_name}`);
+          } else if (payload.eventType === 'UPDATE') {
+            const idx = sessions.findIndex(s => s.id === payload.new.id);
+            if (idx >= 0) {
+              sessions[idx] = payload.new;
+              if (selectedSession?.id === payload.new.id) {
+                selectedSession = payload.new;
+                updateModeButtons(payload.new.mode);
+              }
+            }
+          } else if (payload.eventType === 'DELETE') {
+            sessions = sessions.filter(s => s.id !== payload.old.id);
+          }
+          renderSessions();
+        })
+        .subscribe();
+
+      messageChannel = supabase.channel('messages-channel')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        }, async (payload) => {
+          const msg = payload.new;
+
+          if (selectedSession?.id === msg.session_id) {
+            addMessageToArea(msg);
+            scrollToBottom();
+            markMessagesRead(msg.session_id);
+          } else {
+            const session = sessions.find(s => s.id === msg.session_id);
+            if (session) session.has_unread = true;
+            renderSessions();
+
+            if (msg.sender_type === 'customer') {
+              playNotificationSound();
+              showBrowserNotification('New message', `From: ${msg.sender_type === 'customer' ? session?.customer_name : 'Unknown'}`);
+            }
+          }
+
+          if (selectedSession?.id === msg.session_id && selectedSession?.mode === 'ai' && msg.sender_type === 'customer') {
+            await triggerAIResponse(msg);
+          }
+        })
+        .subscribe();
+    }
+
+    async function triggerAIResponse(msg) {
+      try {
+        const response = await fetch(AI_WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: msg.session_id,
+            message: msg.content,
+            customer_name: selectedSession?.customer_name
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          await supabase.from('chat_sessions').update({
+            total_messages: (selectedSession.total_messages || 0) + 2
+          }).eq('id', selectedSession.id);
+        }
+      } catch (err) {
+        console.error('AI response error:', err);
+      }
+    }
+
+    async function loadStats() {
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('daily_stats')
+        .select('*')
+        .eq('date', today)
+        .maybeSingle();
+
+      if (data) {
+        document.getElementById('statTotalSessions').textContent = data.total_sessions || 0;
+        document.getElementById('statAiHandled').textContent = data.ai_handled || 0;
+        document.getElementById('statManualHandled').textContent = data.manual_handled || 0;
+        document.getElementById('statEscalations').textContent = data.ai_escalation_count || 0;
+        document.getElementById('statAvgWait').textContent = data.avg_wait_seconds || 0;
+
+        const total = (data.ai_handled || 0) + (data.manual_handled || 0);
+        if (total > 0) {
+          const aiPct = ((data.ai_handled || 0) / total) * 100;
+          const manualPct = ((data.manual_handled || 0) / total) * 100;
+          document.getElementById('statAiBar').style.width = aiPct + '%';
+          document.getElementById('statManualBar').style.width = manualPct + '%';
+        }
+
+        if (data.avg_csat) {
+          const stars = '\u2605'.repeat(Math.round(data.avg_csat));
+          document.getElementById('statCsat').textContent = stars;
+        }
+
+        if (data.top_issue_category) {
+          document.getElementById('statTopCategory').textContent = data.top_issue_category;
+        }
+      }
+    }
+
+    function toggleStats() {
+      const panel = document.getElementById('statsPanel');
+      const btn = document.getElementById('statsBtn');
+      panel.classList.toggle('open');
+      btn.classList.toggle('active');
+    }
+
+    function formatTime(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = Math.floor((now - date) / 1000);
+
+      if (diff < 60) return 'now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+      return date.toLocaleDateString();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function scrollToBottom() {
+      const area = document.getElementById('messagesArea');
+      area.scrollTop = area.scrollHeight;
+    }
+
+    function updateUnreadCount() {
+      unreadCount = sessions.filter(s => s.has_unread).length;
+      document.title = unreadCount > 0 ? `(${unreadCount}) Live Chat` : 'Live Chat Agent';
+    }
+
+    function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    function showBrowserNotification(title, body) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/favicon.ico' });
+      }
+    }
+
+    function playNotificationSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.frequency.value = 440;
+        osc.type = 'sine';
+        gain.gain.value = 0.1;
+
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3);
+        osc.stop(ctx.currentTime + 0.3);
+      } catch (e) {
+        console.log('Audio not supported');
+      }
+    }
+
+    const quickReplyBtns = document.querySelectorAll('.quick-reply-btn');
+    quickReplyBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('msgInput').value = btn.dataset.msg;
+      });
+    });
+
+    window.addEventListener('beforeunload', async () => {
+      if (currentAgent) {
+        const formData = new FormData();
+        formData.append('id', currentAgent.id);
+        navigator.sendBeacon(`${SUPABASE_URL}/rest/v1/rpc/set_agent_offline`, formData);
+
+        await supabase.from('agents').update({ is_online: false }).eq('id', currentAgent.id);
+      }
+    });
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        window.location.reload();
+      }
+    });
+  </script>
+</body>
+</html>
